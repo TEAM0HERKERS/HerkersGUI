@@ -1,4 +1,8 @@
 # HerkersGUI
-My first roblox gui for exploits.
-
-Old version:https://pastebin.com/V0pmuZaC
+My first roblox gui!
+Current version: V1
+only 3 features on it
+~~~~~~~~~~~~~~~~~~~~
+- Hitbox expander
+- Speed Boost 6x
+- Infinite Jump
