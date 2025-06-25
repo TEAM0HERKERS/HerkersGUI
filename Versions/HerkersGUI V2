@@ -1,0 +1,329 @@
+local notifs = loadstring(game:HttpGet('https://raw.githubusercontent.com/CF-Trail/random/main/FE2Notifs.lua'))()
+notifs.alert('Thanks for using HerkersGUI!', nil, nil, 'rainbow')
+
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+
+local hitboxSize = Vector3.new(12, 12, 12)
+local isExpanded = false
+local isSpeedBoostActive = false
+local isInfiniteJumpActive = false
+local isEspActive = false
+local normalSpeed = 16
+local boostedSpeed = normalSpeed * 6
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "GameEnhancerGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 250, 0, 250)
+frame.Position = UDim2.new(0.5, -125, 0.5, -125)
+frame.BackgroundColor3 = Color3.new(0.2, 0.9, 0.5)
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+frame.Visible = false
+
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 12)
+frameCorner.Parent = frame
+
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 24, 0, 24)
+closeButton.Position = UDim2.new(1, -28, 0, 4)
+closeButton.Text = "X"
+closeButton.TextSize = 14
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
+closeButton.Parent = frame
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeButton
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.Position = UDim2.new(0, 0, 0, 4)
+titleLabel.Text = "HerkersGUI V2"
+titleLabel.TextSize = 20
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Parent = frame
+
+local buttonHeight = 30
+local buttonSpacing = 10
+local function createButton(text, order)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.85, 0, 0, buttonHeight)
+    btn.Position = UDim2.new(0.075, 0, 0, 40 + (order - 1) * (buttonHeight + buttonSpacing))
+    btn.Text = text
+    btn.TextSize = 14
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.BackgroundColor3 = Color3.new(0.2, 0.6, 0.8)
+    btn.Parent = frame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+
+    return btn
+end
+
+local expandButton = createButton("Expand Hitboxes: OFF", 1)
+local speedButton = createButton("Speed Boost (6x): OFF", 2)
+local jumpButton = createButton("Infinite Jump: OFF", 3)
+local espButton = createButton("ESP (Tracers): OFF", 4)
+
+-- ✅ Executor Button (Button 5)
+local executorButton = createButton("Executor", 5)
+executorButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.new(0, 80, 0, 26)
+openButton.Position = UDim2.new(0, 10, 0, 10)
+openButton.Text = "Open GUI"
+openButton.TextSize = 10
+openButton.TextColor3 = Color3.new(1, 1, 1)
+openButton.BackgroundColor3 = Color3.new(0.2, 0.9, 0.0)
+openButton.Parent = screenGui
+
+local openCorner = Instance.new("UICorner")
+openCorner.CornerRadius = UDim.new(0, 8)
+openCorner.Parent = openButton
+
+local function toggleGui()
+    if frame.Visible then
+        local closeTween = TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 200, 0, 200),
+            BackgroundTransparency = 1
+        })
+        closeTween:Play()
+        closeTween.Completed:Connect(function()
+            frame.Visible = false
+            frame.Size = UDim2.new(0, 250, 0, 250)
+            frame.BackgroundTransparency = 0
+        end)
+    else
+        frame.Size = UDim2.new(0, 200, 0, 200)
+        frame.BackgroundTransparency = 1
+        frame.Visible = true
+        local openTween = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 250, 0, 250),
+            BackgroundTransparency = 0
+        })
+        openTween:Play()
+    end
+end
+
+local function expandHitboxes()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            local root = plr.Character.HumanoidRootPart
+            if hum and hum.Health > 0 then
+                root.Size = isExpanded and hitboxSize or Vector3.new(2, 2, 1)
+                root.Transparency = isExpanded and 0.5 or 1
+                root.CanCollide = false
+            else
+                root.Size = Vector3.new(2, 2, 1)
+                root.Transparency = 1
+            end
+        end
+    end
+end
+
+local function toggleExpand()
+    isExpanded = not isExpanded
+    expandButton.Text = isExpanded and "Expand Hitboxes: ON" or "Expand Hitboxes: OFF"
+    expandButton.BackgroundColor3 = isExpanded and Color3.new(0, 0.9, 0.2) or Color3.new(0.2, 0.6, 0.8)
+    expandHitboxes()
+end
+
+local function toggleSpeed()
+    isSpeedBoostActive = not isSpeedBoostActive
+    speedButton.Text = isSpeedBoostActive and "Speed Boost (6x): ON" or "Speed Boost (6x): OFF"
+    speedButton.BackgroundColor3 = isSpeedBoostActive and Color3.new(0, 0.9, 0.2) or Color3.new(0.2, 0.6, 0.8)
+    humanoid.WalkSpeed = isSpeedBoostActive and boostedSpeed or normalSpeed
+end
+
+local function toggleInfiniteJump()
+    isInfiniteJumpActive = not isInfiniteJumpActive
+    jumpButton.Text = isInfiniteJumpActive and "Infinite Jump: ON" or "Infinite Jump: OFF"
+    jumpButton.BackgroundColor3 = isInfiniteJumpActive and Color3.new(0, 0.9, 0.2) or Color3.new(0.2, 0.6, 0.8)
+end
+
+local drawings = {}
+local function toggleEsp()
+    isEspActive = not isEspActive
+    espButton.Text = isEspActive and "ESP (Tracers): ON" or "ESP (Tracers): OFF"
+    espButton.BackgroundColor3 = isEspActive and Color3.new(0, 0.9, 0.2) or Color3.new(0.2, 0.6, 0.8)
+
+    if isEspActive then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "ESP NOTE!",
+            Text = "If a tracer gets stuck then turn tracers off and turn it back on",
+            Duration = 5
+        })
+    else
+        for plr, line in pairs(drawings) do
+            line.Visible = false
+            line:Remove()
+            drawings[plr] = nil
+        end
+    end
+end
+
+-- ✅ Executor Button Logic
+executorButton.MouseButton1Click:Connect(function()
+    local notifs = loadstring(game:HttpGet('https://raw.githubusercontent.com/CF-Trail/random/main/FE2Notifs.lua'))()
+    notifs.alert('Executor Loaded!')
+    task.wait(0.1)
+    notifs.alert('HerkersGUI V2', nil, nil, 'rainbow')
+
+    local ScreenGui = Instance.new("ScreenGui")
+    local Frame = Instance.new("Frame")
+    local TextLabel = Instance.new("TextLabel")
+    local TextBox = Instance.new("TextBox")
+    local ExecuteButton = Instance.new("TextButton")
+
+    ScreenGui.Name = "Notahack749GUI"
+    ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    Frame.Parent = ScreenGui
+    Frame.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
+    Frame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+    Frame.Position = UDim2.new(0.3, 0, 0.3, 0)
+    Frame.Size = UDim2.new(0, 400, 0, 250)
+    Frame.Active = true
+    Frame.Draggable = true
+
+    TextLabel.Parent = Frame
+    TextLabel.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
+    TextLabel.BorderSizePixel = 0
+    TextLabel.Size = UDim2.new(1, 0, 0, 50)
+    TextLabel.Font = Enum.Font.Code
+    TextLabel.Text = "Herkers Executor"
+    TextLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    TextLabel.TextSize = 24
+
+    TextBox.Parent = Frame
+    TextBox.Position = UDim2.new(0.05, 0, 0.3, 0)
+    TextBox.Size = UDim2.new(0.9, 0, 0.4, 0)
+    TextBox.ClearTextOnFocus = false
+    TextBox.Font = Enum.Font.Code
+    TextBox.PlaceholderText = "-- Insert local code here"
+    TextBox.TextColor3 = Color3.fromRGB(0, 255, 0)
+    TextBox.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    TextBox.TextSize = 14
+    TextBox.TextWrapped = true
+    TextBox.TextYAlignment = Enum.TextYAlignment.Top
+    TextBox.TextXAlignment = Enum.TextXAlignment.Left
+    TextBox.MultiLine = true
+
+    ExecuteButton.Parent = Frame
+    ExecuteButton.Position = UDim2.new(0.3, 0, 0.8, 0)
+    ExecuteButton.Size = UDim2.new(0.4, 0, 0.15, 0)
+    ExecuteButton.Font = Enum.Font.Code
+    ExecuteButton.Text = "Execute"
+    ExecuteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ExecuteButton.BackgroundColor3 = Color3.fromRGB(0, 127, 255)
+    ExecuteButton.TextSize = 18
+
+    ExecuteButton.MouseButton1Click:Connect(function()
+        local sourceCode = TextBox.Text
+        local success, err = pcall(function()
+            loadstring(sourceCode)()
+        end)
+        if not success then
+            warn("Error executing: ", err)
+        end
+    end)
+end)
+
+-- Button connections
+openButton.MouseButton1Click:Connect(toggleGui)
+closeButton.MouseButton1Click:Connect(toggleGui)
+expandButton.MouseButton1Click:Connect(toggleExpand)
+speedButton.MouseButton1Click:Connect(toggleSpeed)
+jumpButton.MouseButton1Click:Connect(toggleInfiniteJump)
+espButton.MouseButton1Click:Connect(toggleEsp)
+
+-- Runtime and inputs (unchanged)
+RunService.RenderStepped:Connect(function()
+    expandHitboxes()
+    if isEspActive then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                local pos, onScreen = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
+                if not drawings[plr] then
+                    local line = Drawing.new("Line")
+                    line.Color = Color3.fromRGB(0, 255, 0)
+                    line.Thickness = 1.5
+                    line.Transparency = 1
+                    drawings[plr] = line
+                end
+                if onScreen then
+                    local bottom = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    drawings[plr].From = bottom
+                    drawings[plr].To = Vector2.new(pos.X, pos.Y)
+                    drawings[plr].Visible = true
+                else
+                    drawings[plr].Visible = false
+                end
+            elseif drawings[plr] then
+                drawings[plr].Visible = false
+            end
+        end
+    end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+    if isInfiniteJumpActive then
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- Dragging (unchanged)
+local dragging, dragInput, dragStart, startPos
+local function update(input)
+    local delta = input.Position - dragStart
+    frame.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
